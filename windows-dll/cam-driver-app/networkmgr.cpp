@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "jpgd.h"
 #include "networkmgr.h"
+
 #pragma comment (lib, "Ws2_32.lib")
 
 static constexpr auto PORT = "50684";

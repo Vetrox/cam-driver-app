@@ -1,19 +1,14 @@
-//////////////////////////////////////////////////////////////////////////
-//  This file contains routines to register / Unregister the 
-//  Directshow filter 'Virtual Cam'
-//  We do not use the inbuilt BaseClasses routines as we need to register as
-//  a capture source
-//////////////////////////////////////////////////////////////////////////
+#include <streams.h>            // include dir: baseclasses, lib: strmbase.lib
+#include <initguid.h>           // MAKE CLSID work...
 
-#include <windows.h>
-#include <streams.h>
-#include <initguid.h>
-#include <dllsetup.h>
+// TEMP
+#include <string>
+// END TEMP
+
+#include "config.h"
 #include "networkmgr.h"
 #include "filter.h"
-
-#pragma comment(lib, "winmm.lib")
-
+// #include "logger.h"
 
 #define CreateComObject(clsid, iid, var) CoCreateInstance( clsid, NULL, CLSCTX_INPROC_SERVER, iid, (void **)&var);
 
@@ -21,7 +16,7 @@ STDAPI AMovieSetupRegisterServer(CLSID   clsServer, LPCWSTR szDescription, LPCWS
 STDAPI AMovieSetupUnregisterServer(CLSID clsServer);
 
 // {8E14549A-DB61-4309-AFA1-3578E927E933}
-DEFINE_GUID(CLSID_VirtualCam,
+DEFINE_GUID(CLSID_VCAM,
     0x8e14549a, 0xdb61, 0x4309, 0xaf, 0xa1, 0x35, 0x78, 0xe9, 0x27, 0xe9, 0x33);
 
 const AMOVIESETUP_MEDIATYPE AMSMediaTypesVCam =
@@ -32,31 +27,31 @@ const AMOVIESETUP_MEDIATYPE AMSMediaTypesVCam =
 
 const AMOVIESETUP_PIN AMSPinVCam =
 {
-    L"Output",             // Pin string name
+    NULL,                  // (obsolete) Pin string name 
     FALSE,                 // Is it rendered
     TRUE,                  // Is it an output
     FALSE,                 // Can we have zero instances of this pin
     FALSE,                 // Can we have more than one instance of this type of pin
-    &CLSID_NULL,           // Connects to filter (obsolete)
-    NULL,                  // Connects to pin (obsolete)
+    &CLSID_NULL,           // (obsolete) Connects to filter 
+    NULL,                  // (obsolete) Connects to pin 
     1,                     // Number of media types supported by this pin.
     &AMSMediaTypesVCam     // Pin Media types (1 Video)
 };
 
 const AMOVIESETUP_FILTER AMSFilterVCam =
 {
-    &CLSID_VirtualCam,     // Filter CLSID
-    L"Virtual Cam",        // Filter name
-    MERIT_DO_NOT_USE,      // Filter merit (no filter graph)
-    1,                     // Number pins
-    &AMSPinVCam            // Pin details
+    &CLSID_VCAM,            // Filter CLSID
+    CAMERA_NAME,            // Filter name
+    MERIT_DO_NOT_USE,       // Filter merit (no filter graph)
+    1,                      // Number pins
+    &AMSPinVCam             // Pin details
 };
 
 CFactoryTemplate g_Templates[] =
 {
     {
-        L"Virtual Cam",         // Name of the filter.
-        &CLSID_VirtualCam,      // Pointer to the CLSID of the object.
+        CAMERA_NAME,         // Name of the filter.
+        &CLSID_VCAM,      // Pointer to the CLSID of the object.
         CVCam::CreateInstance,  // Pointer to a function that creates an instance of the object.
         NULL,                   // Pointer to a function that gets called from the DLL entry point.
         &AMSFilterVCam
@@ -72,6 +67,7 @@ int g_cTemplates = sizeof(g_Templates) / sizeof(g_Templates[0]);
 */
 STDAPI RegisterFilters(BOOL bRegister)
 {
+    //l::log("RegisterFilters.\n");
     HRESULT hr = NOERROR;
     WCHAR achFileName[MAX_PATH];
     char achTemp[MAX_PATH];
@@ -86,7 +82,7 @@ STDAPI RegisterFilters(BOOL bRegister)
     hr = CoInitialize(0);
     if (bRegister)
     {
-        hr = AMovieSetupRegisterServer(CLSID_VirtualCam, L"Virtual Cam", achFileName, L"Both", L"InprocServer32");
+        hr = AMovieSetupRegisterServer(CLSID_VCAM, CAMERA_NAME, achFileName, L"Both", L"InprocServer32");
     }
 
     if (SUCCEEDED(hr))
@@ -103,8 +99,8 @@ STDAPI RegisterFilters(BOOL bRegister)
                 rf2.dwMerit = MERIT_DO_NOT_USE;
                 rf2.cPins = 1;
                 rf2.rgPins = &AMSPinVCam;
-                hr = fm->RegisterFilter(CLSID_VirtualCam,   // Filter CLSID.
-                    L"Virtual Cam",                         // Filter name.
+                hr = fm->RegisterFilter(CLSID_VCAM,   // Filter CLSID.
+                    CAMERA_NAME,                         // Filter name.
                     &pMoniker,                              // Device monkier
                     &CLSID_VideoInputDeviceCategory,        // Video compressor category.
                     NULL,                                   // Instance data.
@@ -113,7 +109,7 @@ STDAPI RegisterFilters(BOOL bRegister)
             }
             else
             {
-                hr = fm->UnregisterFilter(&CLSID_VideoInputDeviceCategory, 0, CLSID_VirtualCam);
+                hr = fm->UnregisterFilter(&CLSID_VideoInputDeviceCategory, 0, CLSID_VCAM);
             }
         }
 
@@ -122,7 +118,7 @@ STDAPI RegisterFilters(BOOL bRegister)
     }
 
     if (SUCCEEDED(hr) && !bRegister)
-        hr = AMovieSetupUnregisterServer(CLSID_VirtualCam);
+        hr = AMovieSetupUnregisterServer(CLSID_VCAM);
 
     CoFreeUnusedLibraries();
     CoUninitialize();
@@ -132,11 +128,14 @@ STDAPI RegisterFilters(BOOL bRegister)
 
 STDAPI DllRegisterServer()
 {
+    //l::log("Registered.\n");
     return RegisterFilters(TRUE);
 }
 
 STDAPI DllUnregisterServer()
 {
+    //l::log("Unregister.\n");
+    //l::stop();
     running = false;
     return RegisterFilters(FALSE);
 }
@@ -144,5 +143,6 @@ STDAPI DllUnregisterServer()
 extern "C" BOOL WINAPI DllEntryPoint(HINSTANCE, ULONG, LPVOID);
 BOOL APIENTRY DllMain(HANDLE hModule, DWORD  dwReason, LPVOID lpReserved)
 {
+    // l::log("DllMain.\n");
     return DllEntryPoint((HINSTANCE)(hModule), dwReason, lpReserved);
 }

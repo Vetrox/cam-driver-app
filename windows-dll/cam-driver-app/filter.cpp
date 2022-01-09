@@ -6,8 +6,12 @@
 #include <stdio.h>
 #include <olectl.h>
 #include <dvdmedia.h>
+
+
+#include "config.h"
 #include "filter.h"
 #include "networkmgr.h"
+#include "logger.h"
 
 // define 4*180 = 720
 #define RATIO_WIDTH 320
@@ -18,23 +22,26 @@
 //////////////////////////////////////////////////////////////////////////
 CUnknown* WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT* phr)
 {
+    CDA_LOG("CreateInstance.\n");
     ASSERT(phr);
     CUnknown* punk = new CVCam(lpunk, phr);
     return punk;
 }
 
 CVCam::CVCam(LPUNKNOWN lpunk, HRESULT* phr) :
-    CSource(NAME("Virtual Cam"), lpunk, CLSID_VirtualCam)
+    CSource(CAMERA_NAME, lpunk, CLSID_VCAM)
 {
+    CDA_LOG("CVCam Constructor.\n");
     ASSERT(phr);
     CAutoLock cAutoLock(&m_cStateLock);
     // Create the one and only output pin
     m_paStreams = (CSourceStream**) new CVCamStream * [1];
-    m_paStreams[0] = new CVCamStream(phr, this, L"Virtual Cam");
+    m_paStreams[0] = new CVCamStream(phr, this, CAMERA_NAME);
 }
 
 HRESULT CVCam::QueryInterface(REFIID riid, void** ppv)
 {
+    CDA_LOG("QueryInterface.\n");
     //Forward request for IAMStreamConfig & IKsPropertySet to the pin
     if (riid == _uuidof(IAMStreamConfig) || riid == _uuidof(IKsPropertySet))
         return m_paStreams[0]->QueryInterface(riid, ppv);
@@ -47,8 +54,9 @@ HRESULT CVCam::QueryInterface(REFIID riid, void** ppv)
 // all the stuff.
 //////////////////////////////////////////////////////////////////////////
 CVCamStream::CVCamStream(HRESULT* phr, CVCam* pParent, LPCWSTR pPinName) :
-    CSourceStream(NAME("Virtual Cam"), phr, pParent, pPinName), m_pParent(pParent)
+    CSourceStream(CAMERA_NAME, phr, pParent, pPinName), m_pParent(pParent)
 {
+    CDA_LOG("CVCamStream Constructor.\n");
     // Set the default media type as 320x240x24@15
     //TODO: Change to other resolution
     GetMediaType(4, &m_mt);
@@ -56,10 +64,13 @@ CVCamStream::CVCamStream(HRESULT* phr, CVCam* pParent, LPCWSTR pPinName) :
 
 CVCamStream::~CVCamStream()
 {
+    // STRAM ENDS HERE. CORRESPONDS TO USER BUTTON PRESS
+    CDA_LOG("CVCamStream Destuctor.\n");
 }
 
 HRESULT CVCamStream::QueryInterface(REFIID riid, void** ppv)
 {
+    CDA_LOG("CVCamStream::QueryInterface.\n");
     // Standard OLE stuff
     if (riid == _uuidof(IAMStreamConfig))
         *ppv = (IAMStreamConfig*)this;
@@ -81,6 +92,8 @@ RGBImg* last_image = NULL;
 
 HRESULT CVCamStream::FillBuffer(IMediaSample* pms)
 {
+
+    CDA_LOG("CVCamStream::FillBuffer.\n");
     if (!running) {
         running = true;
         receiver = std::thread(setup); // START Receiver
@@ -121,6 +134,7 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms)
 // Ignore quality management messages sent from the downstream filter
 STDMETHODIMP CVCamStream::Notify(IBaseFilter* pSender, Quality q)
 {
+    CDA_LOG("CVCamStream::Notify\n");
     return E_NOTIMPL;
 }
 
@@ -129,6 +143,7 @@ STDMETHODIMP CVCamStream::Notify(IBaseFilter* pSender, Quality q)
 //////////////////////////////////////////////////////////////////////////
 HRESULT CVCamStream::SetMediaType(const CMediaType* pmt)
 {
+    CDA_LOG("CVCamStream::SetMediaType\n");
     DECLARE_PTR(VIDEOINFOHEADER, pvi, pmt->Format());
     HRESULT hr = CSourceStream::SetMediaType(pmt);
     return hr;
@@ -137,6 +152,7 @@ HRESULT CVCamStream::SetMediaType(const CMediaType* pmt)
 // See Directshow help topic for IAMStreamConfig for details on this method
 HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType* pmt)
 {
+    CDA_LOG("CVCamStream::GetMediaType\n");
     if (iPosition < 0) return E_INVALIDARG;
     if (iPosition > 8) return VFW_S_NO_MORE_ITEMS;
 
@@ -179,6 +195,7 @@ HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType* pmt)
 // This method is called to see if a given output format is supported
 HRESULT CVCamStream::CheckMediaType(const CMediaType* pMediaType)
 {
+    CDA_LOG("CVCamStream::CheckMediaType\n");
     VIDEOINFOHEADER* pvi = (VIDEOINFOHEADER*)(pMediaType->Format());
     if (*pMediaType != m_mt)
         return E_INVALIDARG;
@@ -188,6 +205,7 @@ HRESULT CVCamStream::CheckMediaType(const CMediaType* pMediaType)
 // This method is called after the pins are connected to allocate buffers to stream data
 HRESULT CVCamStream::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIES* pProperties)
 {
+    CDA_LOG("CVCamStream::DecideBufferSize\n");
     CAutoLock cAutoLock(m_pFilter->pStateLock());
     HRESULT hr = NOERROR;
 
@@ -206,7 +224,8 @@ HRESULT CVCamStream::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIE
 
 // Called when graph is run
 HRESULT CVCamStream::OnThreadCreate()
-{
+{ // STREAM STARTS HERE
+    CDA_LOG("CVCamStream::OnThreadCreate\n");
     m_rtLastTime = 0;
     return NOERROR;
 } // OnThreadCreate
@@ -218,6 +237,7 @@ HRESULT CVCamStream::OnThreadCreate()
 
 HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE* pmt)
 {
+    CDA_LOG("CVCamStream::SetFormat\n");
     DECLARE_PTR(VIDEOINFOHEADER, pvi, m_mt.pbFormat);
     m_mt = *pmt;
     IPin* pin;
@@ -232,12 +252,14 @@ HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE* pmt)
 
 HRESULT STDMETHODCALLTYPE CVCamStream::GetFormat(AM_MEDIA_TYPE** ppmt)
 {
+    CDA_LOG("CVCamStream::GetFormat\n");
     *ppmt = CreateMediaType(&m_mt);
     return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE CVCamStream::GetNumberOfCapabilities(int* piCount, int* piSize)
 {
+    CDA_LOG("CVCamStream::GetNumberOfCapabilities\n");
     *piCount = 8;
     *piSize = sizeof(VIDEO_STREAM_CONFIG_CAPS);
     return S_OK;
@@ -245,6 +267,7 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetNumberOfCapabilities(int* piCount, int
 
 HRESULT STDMETHODCALLTYPE CVCamStream::GetStreamCaps(int iIndex, AM_MEDIA_TYPE** pmt, BYTE* pSCC)
 {
+    CDA_LOG("CVCamStream::GetStreamCaps\n");
     *pmt = CreateMediaType(&m_mt);
     DECLARE_PTR(VIDEOINFOHEADER, pvi, (*pmt)->pbFormat);
 
@@ -311,6 +334,7 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetStreamCaps(int iIndex, AM_MEDIA_TYPE**
 HRESULT CVCamStream::Set(REFGUID guidPropSet, DWORD dwID, void* pInstanceData,
     DWORD cbInstanceData, void* pPropData, DWORD cbPropData)
 {// Set: Cannot set any properties.
+    CDA_LOG("CVCamStream::Set\n");
     return E_NOTIMPL;
 }
 
@@ -325,6 +349,7 @@ HRESULT CVCamStream::Get(
     DWORD* pcbReturned     // Return the size of the property.
 )
 {
+    CDA_LOG("CVCamStream::Get\n");
     if (guidPropSet != AMPROPSETID_Pin)             return E_PROP_SET_UNSUPPORTED;
     if (dwPropID != AMPROPERTY_PIN_CATEGORY)        return E_PROP_ID_UNSUPPORTED;
     if (pPropData == NULL && pcbReturned == NULL)   return E_POINTER;
@@ -340,6 +365,7 @@ HRESULT CVCamStream::Get(
 // QuerySupported: Query whether the pin supports the specified property.
 HRESULT CVCamStream::QuerySupported(REFGUID guidPropSet, DWORD dwPropID, DWORD* pTypeSupport)
 {
+    CDA_LOG("CVCamStream::QuerySupported\n");
     if (guidPropSet != AMPROPSETID_Pin) return E_PROP_SET_UNSUPPORTED;
     if (dwPropID != AMPROPERTY_PIN_CATEGORY) return E_PROP_ID_UNSUPPORTED;
     // We support getting this property, but not setting it.

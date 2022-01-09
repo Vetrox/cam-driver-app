@@ -2,7 +2,8 @@
 
 #define DECLARE_PTR(type, ptr, expr) type* ptr = (type*)(expr);
 
-EXTERN_C const GUID CLSID_VirtualCam;
+
+EXTERN_C const GUID CLSID_VCAM;
 
 class CVCamStream;
 class CVCam : public CSource
