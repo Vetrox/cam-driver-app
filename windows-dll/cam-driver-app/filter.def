@@ -1,4 +1,4 @@
-LIBRARY     filter.dll
+LIBRARY     cam-driver-app.dll
 EXPORTS
             DllMain                 PRIVATE
             DllGetClassObject       PRIVATE

@@ -144,7 +144,6 @@ STDMETHODIMP CVCamStream::Notify(IBaseFilter* pSender, Quality q)
 HRESULT CVCamStream::SetMediaType(const CMediaType* pmt)
 {
     CDA_LOG("CVCamStream::SetMediaType\n");
-    DECLARE_PTR(VIDEOINFOHEADER, pvi, pmt->Format());
     HRESULT hr = CSourceStream::SetMediaType(pmt);
     return hr;
 }
@@ -196,7 +195,6 @@ HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType* pmt)
 HRESULT CVCamStream::CheckMediaType(const CMediaType* pMediaType)
 {
     CDA_LOG("CVCamStream::CheckMediaType\n");
-    VIDEOINFOHEADER* pvi = (VIDEOINFOHEADER*)(pMediaType->Format());
     if (*pMediaType != m_mt)
         return E_INVALIDARG;
     return S_OK;
@@ -238,7 +236,6 @@ HRESULT CVCamStream::OnThreadCreate()
 HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE* pmt)
 {
     CDA_LOG("CVCamStream::SetFormat\n");
-    DECLARE_PTR(VIDEOINFOHEADER, pvi, m_mt.pbFormat);
     m_mt = *pmt;
     IPin* pin;
     ConnectedTo(&pin);
