@@ -9,14 +9,15 @@ public:
     IFilterGraph* GetGraph() { return m_pGraph; }
 private:
     CVCam(LPUNKNOWN lpunk, HRESULT* phr);
+    ~CVCam();
 };
 
 class CVCamStream : public CSourceStream, public IAMStreamConfig, public IKsPropertySet {
 public:
     //// IUnknown /////////////////////////////////
     STDMETHODIMP            QueryInterface(REFIID riid, void** ppv);
-    STDMETHODIMP_(ULONG)    AddRef() { return GetOwner()->AddRef(); }
-    STDMETHODIMP_(ULONG)    Release() { return GetOwner()->Release(); }
+    STDMETHODIMP_(ULONG)    AddRef();
+    STDMETHODIMP_(ULONG)    Release();
     //// IQualityControl //////////////////////////
     STDMETHODIMP Notify(IBaseFilter* pSender, Quality q);
     //// IAMStreamConfig //////////////////////////
@@ -30,6 +31,8 @@ public:
     STDMETHODIMP QuerySupported(REFGUID, DWORD, DWORD*);
     //// CSourceStream ////////////////////////////
     CVCamStream(HRESULT* phr, CVCam* pParent, LPCWSTR pPinName);
+    HRESULT OnThreadStartPlay();
+    HRESULT OnThreadDestroy();
     HRESULT FillBuffer(IMediaSample* pms);
     HRESULT DecideBufferSize(IMemAllocator* pIMemAlloc, ALLOCATOR_PROPERTIES* pProperties);
     HRESULT CheckMediaType(const CMediaType* pMediaType);

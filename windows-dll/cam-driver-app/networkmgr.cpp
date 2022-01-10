@@ -3,8 +3,6 @@
 #include "jpgd.h"
 #include "networkmgr.h"
 
-#pragma comment (lib, "Ws2_32.lib")
-
 static constexpr auto PORT = "50684";
 static constexpr size_t header_size = 2;
 static constexpr auto PAYLOAD_SIZE = 65000;
@@ -93,14 +91,18 @@ void listen(SOCKET listen_socket) {
         if (bytes_recieved > 0) {
             process(bytes_recieved);
         }
-    } while (bytes_recieved > 0 && running);
+    } while (running);
 }
 
 static boolean winsock_initialized = false;
 
-// CALL THIS IN A SEPARATE THREAD
-void setup()
-{
+// CALL THIS IN A SEPARATE THREAD: TODO: don't call in separate thread. instead call in ::FillBuffer
+void setup() {
+    Sleep(500);
+    if (!running) {
+        return; // cancel the fluctuative start and stops.
+    }
+
     int iResult = 0;
     if (!winsock_initialized) {
         WSADATA wsaData;
@@ -111,7 +113,7 @@ void setup()
         // Create socket
         auto listen_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (listen_socket != INVALID_SOCKET) {
-            // Check if we can open socket and retrieve ai_addr
+            // Check if we can open socket and retreive ai_addr
             struct addrinfo* result = NULL;
             iResult = addrinfo(&result);
             if (iResult == 0) {
@@ -119,7 +121,12 @@ void setup()
                 iResult = bind(listen_socket, result->ai_addr, sizeof(sockaddr));
                 freeaddrinfo(result);
                 if (iResult != SOCKET_ERROR) {
-                    listen(listen_socket);
+                    // set the timeout
+                    int timeout_ms = 500;
+                    iResult = setsockopt(listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_ms, sizeof(timeout_ms));
+                    if (iResult != SOCKET_ERROR) {
+                        listen(listen_socket);
+                    }
                 }
                 closesocket(listen_socket);
             }
@@ -138,6 +145,11 @@ void setup_beacon() {
     constexpr auto  MULTICAST_IP = "239.123.234.45"; // see spec
     constexpr auto  MULTICAST_PORT = "50685";          // see spec
 
+    Sleep(500);
+    if (!running) {
+        return; // cancel the fluctuative start and stops.
+    }
+
     int iResult = 0;
     if (!winsock_initialized) {
         WSADATA wsaData;
@@ -154,11 +166,10 @@ void setup_beacon() {
             ZeroMemory(&hints, sizeof(hints));
             hints.ai_flags = 0;
             hints.ai_family = AF_INET;              // IPv4
-            hints.ai_protocol = IPPROTO_UDP;        // Listening for UDP
-            hints.ai_socktype = SOCK_DGRAM;         // Listening for UDP_Datagrams
+            hints.ai_protocol = IPPROTO_UDP;        // Sending UDP
+            hints.ai_socktype = SOCK_DGRAM;         // Sending UDP_Datagrams
             iResult = getaddrinfo(MULTICAST_IP, MULTICAST_PORT, &hints, &multicast_addrinfo);
 
-            freeaddrinfo(multicast_addrinfo);
             if (iResult == 0) {
                 do {
                     iResult = sendto(
@@ -169,9 +180,10 @@ void setup_beacon() {
                         multicast_addrinfo->ai_addr,
                         sizeof(sockaddr)
                     );
-                    Sleep(5000);
-                } while (iResult == SEND_DATA_BUF_LEN && running); // THREAD NEEDED
+                    Sleep(500);
+                } while (running); // THREAD NEEDED
             }
+            freeaddrinfo(multicast_addrinfo);
         }
         closesocket(ipv4_dgram_udp_socket);
     }

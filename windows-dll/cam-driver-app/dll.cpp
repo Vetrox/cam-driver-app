@@ -2,7 +2,6 @@
 #include <initguid.h>           // CLSID / GUID
 
 #include "config.h"             // project configuration
-#include "networkmgr.h"
 #include "filter.h"
 #include "dll.h"
 
@@ -118,7 +117,6 @@ STDAPI DllRegisterServer() {
 
 // AUTOCALL
 STDAPI DllUnregisterServer() {
-    running = false;
     return RegisterFilters(FALSE);
 }
 
