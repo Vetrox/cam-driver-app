@@ -7,15 +7,10 @@
 #include <olectl.h>
 #include <dvdmedia.h>
 
-
 #include "config.h"
 #include "filter.h"
 #include "networkmgr.h"
 #include "logger.h"
-
-// define 4*180 = 720
-#define RATIO_WIDTH 320
-#define RATIO_HEIGHT 180
 
 //////////////////////////////////////////////////////////////////////////
 //  CVCam is the source filter which masquerades as a capture device
