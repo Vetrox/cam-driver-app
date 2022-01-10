@@ -20,7 +20,6 @@ EXTERN_C const GUID CLSID_VCAM;
 extern bool running = false;
 extern RGBImg* buffered_image = NULL;
 // INTERN
-std::thread receiver, beacon;
 RGBImg* last_image = NULL;
 auto last_time = std::chrono::steady_clock::now();
 
@@ -96,8 +95,7 @@ HRESULT CVCamStream::OnThreadStartPlay()
     // STRAM STARTS HERE. CORRESPONDS TO USER BUTTON PRESS
     if (!running) {
         running = true;
-        receiver = std::thread(setup);
-        beacon = std::thread(setup_beacon);
+        cda::setup_();
     }
     cda::log("\nRunning after: ");
     cda::log(std::to_string(running).c_str());
