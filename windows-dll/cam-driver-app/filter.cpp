@@ -119,21 +119,9 @@ HRESULT CVCamStream::OnThreadDestroy() // GETS NEVER EXECUTED SOMEHOW...
 }
 
 HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
-    
-    REFERENCE_TIME rtNow;
-    REFERENCE_TIME avgFrameTime = ((VIDEOINFOHEADER*)m_mt.pbFormat)->AvgTimePerFrame;
-
-    auto cur_time = std::chrono::steady_clock::now();
-    std::string outp = "Delta time: " 
-        + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - last_time).count()) 
-        + "\n";
-    cda::log(outp.c_str());
+    const auto cur_time = std::chrono::steady_clock::now();
+    const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - last_time).count();
     last_time = cur_time;
-
-    rtNow = m_rtLastTime;
-    m_rtLastTime += avgFrameTime;
-    pms->SetTime(&rtNow, &m_rtLastTime);
-    pms->SetSyncPoint(TRUE);
 
     BYTE* pData;
     const long lDataLen = pms->GetSize();
@@ -156,7 +144,7 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
         ZeroMemory(pData, lDataLen);
     }
 
-    Sleep(20);
+    Sleep(10);
 
     return NOERROR;
 }
@@ -243,7 +231,6 @@ HRESULT CVCamStream::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIE
 
 // Called when graph is run
 HRESULT CVCamStream::OnThreadCreate() {
-    m_rtLastTime = 0;
     return NOERROR;
 } // OnThreadCreate
 

@@ -42,7 +42,6 @@ public:
     ~CVCamStream();
 private:
     CVCam*              m_pParent;
-    REFERENCE_TIME      m_rtLastTime;
     HBITMAP             m_hLogoBmp;
     CCritSec            m_cSharedState;
     IReferenceClock*    m_pClock;

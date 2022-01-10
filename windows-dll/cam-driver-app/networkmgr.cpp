@@ -1,8 +1,11 @@
+#include <chrono>
+
 #include <ws2tcpip.h>
 #include <stdint.h>
+
 #include "jpgd.h"
-#include "networkmgr.h"
 #include "logger.h"
+#include "networkmgr.h"
 
 static constexpr auto PORT = "50684";
 static constexpr size_t header_size = 2;
@@ -18,6 +21,8 @@ static auto imgbuf = new char[IMG_BUF_CAP];
 static constexpr auto FRAME_CAP = 20;
 static bool frame_recieved[FRAME_CAP]; // max FRAME_CAP frames allowed
 static char transmission_id = 0;
+
+static auto last_time = std::chrono::steady_clock::now();
 
 bool decompress(RGBImg* img, size_t img_byte_size) {
     // from https://github.com/richgel999/jpeg-compressor
@@ -79,6 +84,11 @@ void process(int readbytes) {
             RGBImg* img = new RGBImg;
             if (decompress(img, offset + frame_size)) {
                 buffered_image = img;
+                
+                const auto cur_time = std::chrono::steady_clock::now();
+                const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - last_time).count();
+                cda::log("Delta last frame received: " + std::to_string(diff) + "\n");
+                last_time = cur_time;
             }
         }
     }
@@ -87,7 +97,6 @@ void process(int readbytes) {
 void listen(SOCKET listen_socket) {
     int bytes_recieved;
     do {
-        cda::log("Listening...\n");
         // hold connection until client closes it
         bytes_recieved = recv(listen_socket, recvbuf, UDP_CAP, 0);
         if (bytes_recieved > 0) {
@@ -124,7 +133,7 @@ void setup() {
                 freeaddrinfo(result);
                 if (iResult != SOCKET_ERROR) {
                     // set the timeout
-                    int timeout_ms = 500;
+                    int timeout_ms = 10;
                     iResult = setsockopt(listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_ms, sizeof(timeout_ms));
                     if (iResult != SOCKET_ERROR) {
                         listen(listen_socket);

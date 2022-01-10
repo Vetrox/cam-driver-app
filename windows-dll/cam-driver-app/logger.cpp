@@ -20,11 +20,13 @@ static std::ofstream	logfile;
 static std::mutex		mu;
 
 void cda::log(const char* msg) {
-	std::lock_guard<std::mutex> guard(mu);
-	if (!logfile.is_open()) {
-		logfile.open(get_userprofile(), std::ios_base::trunc);
+	if constexpr (ENABLE_LOGGING) {
+		std::lock_guard<std::mutex> guard(mu);
+		if (!logfile.is_open()) {
+			logfile.open(get_userprofile(), std::ios_base::trunc);
+		}
+		logfile << msg << std::flush;
 	}
-	logfile << msg << std::flush;
 }
 
 void cda::log(std::string msg) {
