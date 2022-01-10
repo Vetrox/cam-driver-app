@@ -1,20 +1,32 @@
+#include <filesystem>
 #include <iostream>
 #include <fstream>
+#include <mutex>
+
+#include <windows.h>
+
 #include "logger.h"
 
-static std::ofstream logfile;
-void cda_log(const char* msg)
-{
+std::string get_userprofile() {
+	DWORD bufferSize = 32767 * 2 + 1;
+	std::string buff;
+	buff.resize(bufferSize);
+	bufferSize = GetEnvironmentVariableA("userprofile", &buff[0], bufferSize);
+	buff.resize(bufferSize);
+	return buff + "\\cda.log";
+}
+
+static std::ofstream	logfile;
+static std::mutex		mu;
+
+void cda::log(const char* msg) {
+	std::lock_guard<std::mutex> guard(mu);
 	if (!logfile.is_open()) {
-		logfile.open("C:\\Users\\felix\\OneDrive\\Desktop\\virtcam\\logfile.log", std::ios_base::app); // TODO: replace this
+		logfile.open(get_userprofile(), std::ios_base::trunc);
 	}
 	logfile << msg << std::flush;
 }
 
-void cda_stop_log()
-{
-	if (logfile.is_open()) {
-		logfile.close();
-	}
+void cda::log(std::string msg) {
+	log(msg.c_str());
 }
-

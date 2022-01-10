@@ -91,24 +91,23 @@ STDMETHODIMP_(ULONG) CVCamStream::Release() {
 
 HRESULT CVCamStream::OnThreadStartPlay()
 {
-    CDA_LOG("CVCamStream::OnThreadStartPlay.\nRunning before: ");
-    CDA_LOG(std::to_string(running).c_str());
+    cda::log("CVCamStream::OnThreadStartPlay.\nRunning before: ");
+    cda::log(std::to_string(running).c_str());
     // STRAM STARTS HERE. CORRESPONDS TO USER BUTTON PRESS
     if (!running) {
         running = true;
         receiver = std::thread(setup);
         beacon = std::thread(setup_beacon);
     }
-    CDA_LOG("\nRunning after: ");
-    CDA_LOG(std::to_string(running).c_str());
-    CDA_LOG("\n");
+    cda::log("\nRunning after: ");
+    cda::log(std::to_string(running).c_str());
+    cda::log("\n");
     return NO_ERROR;
 }
 
 HRESULT CVCamStream::OnThreadDestroy() // GETS NEVER EXECUTED SOMEHOW...
 {
-    CDA_LOG("CVCamStream::OnThreadDestroy.\nRunning before: ");
-    CDA_LOG(std::to_string(running).c_str());
+    cda::log("CVCamStream::OnThreadDestroy.\n");
     if (running) {
         running = false;
         if (receiver.joinable())
@@ -116,9 +115,6 @@ HRESULT CVCamStream::OnThreadDestroy() // GETS NEVER EXECUTED SOMEHOW...
         if (beacon.joinable())
             beacon.join();
     }
-    CDA_LOG("\nRunning after: ");
-    CDA_LOG(std::to_string(running).c_str());
-    CDA_LOG("\n");
     return NO_ERROR;
 }
 
@@ -128,12 +124,10 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
     REFERENCE_TIME avgFrameTime = ((VIDEOINFOHEADER*)m_mt.pbFormat)->AvgTimePerFrame;
 
     auto cur_time = std::chrono::steady_clock::now();
-    std::string outp = "Delta time: ";
-    outp += std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - last_time).count());
-    outp += " avg: ";
-    outp += std::to_string(avgFrameTime);
-    outp += "\n";
-    CDA_LOG(outp.c_str());
+    std::string outp = "Delta time: " 
+        + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - last_time).count()) 
+        + "\n";
+    cda::log(outp.c_str());
     last_time = cur_time;
 
     rtNow = m_rtLastTime;

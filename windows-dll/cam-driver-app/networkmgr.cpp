@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "jpgd.h"
 #include "networkmgr.h"
+#include "logger.h"
 
 static constexpr auto PORT = "50684";
 static constexpr size_t header_size = 2;
@@ -86,6 +87,7 @@ void process(int readbytes) {
 void listen(SOCKET listen_socket) {
     int bytes_recieved;
     do {
+        cda::log("Listening...\n");
         // hold connection until client closes it
         bytes_recieved = recv(listen_socket, recvbuf, UDP_CAP, 0);
         if (bytes_recieved > 0) {
