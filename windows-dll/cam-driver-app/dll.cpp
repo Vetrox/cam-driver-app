@@ -1,23 +1,10 @@
 #include <streams.h>            // include dir: baseclasses, lib: strmbase.lib
-#include <initguid.h>           // MAKE CLSID work...
+#include <initguid.h>           // CLSID / GUID
 
-// TEMP
-#include <string>
-// END TEMP
-
-#include "config.h"
+#include "config.h"             // project configuration
 #include "networkmgr.h"
 #include "filter.h"
-// #include "logger.h"
-
-#define CreateComObject(clsid, iid, var) CoCreateInstance( clsid, NULL, CLSCTX_INPROC_SERVER, iid, (void **)&var);
-
-STDAPI AMovieSetupRegisterServer(CLSID   clsServer, LPCWSTR szDescription, LPCWSTR szFileName, LPCWSTR szThreadingModel = L"Both", LPCWSTR szServerType = L"InprocServer32");
-STDAPI AMovieSetupUnregisterServer(CLSID clsServer);
-
-// {8E14549A-DB61-4309-AFA1-3578E927E933}
-DEFINE_GUID(CLSID_VCAM,
-    0x8e14549a, 0xdb61, 0x4309, 0xaf, 0xa1, 0x35, 0x78, 0xe9, 0x27, 0xe9, 0x33);
+#include "dll.h"
 
 const AMOVIESETUP_MEDIATYPE AMSMediaTypesVCam =
 {
@@ -50,15 +37,14 @@ const AMOVIESETUP_FILTER AMSFilterVCam =
 CFactoryTemplate g_Templates[] =
 {
     {
-        CAMERA_NAME,         // Name of the filter.
-        &CLSID_VCAM,      // Pointer to the CLSID of the object.
+        CAMERA_NAME,            // Name of the filter.
+        &CLSID_VCAM,            // Pointer to the CLSID of the object.
         CVCam::CreateInstance,  // Pointer to a function that creates an instance of the object.
         NULL,                   // Pointer to a function that gets called from the DLL entry point.
         &AMSFilterVCam
     },
 
 };
-
 int g_cTemplates = sizeof(g_Templates) / sizeof(g_Templates[0]);
 
 /**
@@ -99,8 +85,8 @@ STDAPI RegisterFilters(BOOL bRegister)
                 rf2.dwMerit = MERIT_DO_NOT_USE;
                 rf2.cPins = 1;
                 rf2.rgPins = &AMSPinVCam;
-                hr = fm->RegisterFilter(CLSID_VCAM,   // Filter CLSID.
-                    CAMERA_NAME,                         // Filter name.
+                hr = fm->RegisterFilter(CLSID_VCAM,         // Filter CLSID.
+                    CAMERA_NAME,                            // Filter name.
                     &pMoniker,                              // Device monkier
                     &CLSID_VideoInputDeviceCategory,        // Video compressor category.
                     NULL,                                   // Instance data.
@@ -125,24 +111,18 @@ STDAPI RegisterFilters(BOOL bRegister)
     return hr;
 }
 
-
-STDAPI DllRegisterServer()
-{
-    //l::log("Registered.\n");
+// AUTOCALL
+STDAPI DllRegisterServer() {
     return RegisterFilters(TRUE);
 }
 
-STDAPI DllUnregisterServer()
-{
-    //l::log("Unregister.\n");
-    //l::stop();
+// AUTOCALL
+STDAPI DllUnregisterServer() {
     running = false;
     return RegisterFilters(FALSE);
 }
 
-extern "C" BOOL WINAPI DllEntryPoint(HINSTANCE, ULONG, LPVOID);
-BOOL APIENTRY DllMain(HANDLE hModule, DWORD  dwReason, LPVOID lpReserved)
-{
-    // l::log("DllMain.\n");
+// AUTOCALL
+BOOL APIENTRY DllMain(HANDLE hModule, DWORD  dwReason, LPVOID lpReserved) {
     return DllEntryPoint((HINSTANCE)(hModule), dwReason, lpReserved);
 }
