@@ -2,19 +2,11 @@
 
 #define DECLARE_PTR(type, ptr, expr) type* ptr = (type*)(expr);
 
-// 4*180 = 720
-constexpr auto RATIO_WIDTH = 320;
-constexpr auto RATIO_HEIGHT = 180;
-
-EXTERN_C const GUID CLSID_VCAM;
-
-class CVCamStream;
-
 class CVCam : public CSource {
 public:
     //// IUnknown /////////////////////////////////
     static STDMETHODIMP_(CUnknown*) CreateInstance(LPUNKNOWN lpunk, HRESULT* phr);
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppv);
+    STDMETHODIMP                    QueryInterface(REFIID riid, void** ppv);
 
     IFilterGraph* GetGraph() { return m_pGraph; }
 private:
@@ -24,9 +16,9 @@ private:
 class CVCamStream : public CSourceStream, public IAMStreamConfig, public IKsPropertySet {
 public:
     //// IUnknown /////////////////////////////////
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppv);
-    STDMETHODIMP_(ULONG) AddRef() { return GetOwner()->AddRef(); }
-    STDMETHODIMP_(ULONG) Release() { return GetOwner()->Release(); }
+    STDMETHODIMP            QueryInterface(REFIID riid, void** ppv);
+    STDMETHODIMP_(ULONG)    AddRef() { return GetOwner()->AddRef(); }
+    STDMETHODIMP_(ULONG)    Release() { return GetOwner()->Release(); }
     //// IQualityControl //////////////////////////
     STDMETHODIMP Notify(IBaseFilter* pSender, Quality q);
     //// IAMStreamConfig //////////////////////////
