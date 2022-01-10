@@ -1,7 +1,5 @@
 #pragma once
 
-#define DECLARE_PTR(type, ptr, expr) type* ptr = (type*)(expr);
-
 class CVCam : public CSource {
 public:
     //// IUnknown /////////////////////////////////
