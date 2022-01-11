@@ -93,7 +93,7 @@ HRESULT CVCamStream::OnThreadStartPlay()
 
 HRESULT CVCamStream::OnThreadDestroy() // GETS NEVER EXECUTED SOMEHOW...
 {
-    cda::log("CVCamStream::OnThreadDestroy.\n");
+    cda::logln("CVCamStream::OnThreadDestroy");
     if (cda::cleanup() != S_OK) {
         abort();
     }
@@ -110,7 +110,7 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
     pms->GetPointer(&pData);
 
     cda::send_beacon();
-    if (cda::recv_img(pData) != S_OK) {
+    if (cda::recv_img(pData, lDataLen) != S_OK) {
         ZeroMemory(pData, lDataLen);
     }
     return NOERROR;

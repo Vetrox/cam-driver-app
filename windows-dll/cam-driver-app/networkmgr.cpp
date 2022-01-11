@@ -30,8 +30,10 @@ static constexpr auto GOOD = 0, UNDEFINED = -1, UNINITIALIZED = -2;
 static int status = UNINITIALIZED;
 static WSAData *wsa = NULL;
 
+static bool recv_timeouted_last_time = true;
 
-bool decompress(size_t src_len, uint8_t* dst) { // TODO: change this to use HRESULT
+bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change this to use HRESULT
+    
     // from https://github.com/richgel999/jpeg-compressor
     int actual_comps, width, height;
     uint8_t* dec = jpgd::decompress_jpeg_image_from_memory(
@@ -42,13 +44,27 @@ bool decompress(size_t src_len, uint8_t* dst) { // TODO: change this to use HRES
         &actual_comps,
         3
     );
-    if (actual_comps != 3) return false; // non RGB
+    if (actual_comps != 3) {
+        free(dec);
+        return false; // non RGB
+    }
+    const size_t dec_len = width * height * 3;
+    if (dec_len > dst_len) {
+        cda::logln("ABORT. Requested to write in buffer not capable of storing the image data.");
+        cda::log("dec_len: ");
+        cda::logln(std::to_string(dec_len));
+        cda::log("dst_len: ");
+        cda::logln(std::to_string(dst_len));
+        free(dec);
+        return false; // error writing
+    }
+
     memcpy(dst, dec, width * height * 3); // TODO: optimize amount of memcopies
     free(dec);
     return true;
 }
 
-HRESULT process(int readbytes, uint8_t *dst) {
+HRESULT process(int readbytes, uint8_t *dst, size_t dst_len) {
     const size_t frame_size = readbytes - header_size;
 
     const auto& trans_id = recvbuf[0];
@@ -78,14 +94,15 @@ HRESULT process(int readbytes, uint8_t *dst) {
             }
         }
 
-        if (decompress(offset + frame_size, dst)) {
+        if (decompress(offset + frame_size, dst, dst_len)) {
             const auto cur_time = std::chrono::steady_clock::now();
             const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - last_time).count();
-            cda::logln("Delta last frame received: " + std::to_string(diff));
+            //cda::logln("Delta last frame received: " + std::to_string(diff));
             last_time = cur_time;
+            return S_OK;
         }
     }
-    return S_OK;
+    return E_ABORT;
 }
 
 static constexpr auto* send_data_buf = "BEGIN----v1.0----multicast----cam----server----END"; // see spec
@@ -202,6 +219,8 @@ HRESULT cda::cleanup() {
         freeaddrinfo(multicast_addrinfo);
     }
     multicast_addrinfo = NULL;
+    
+    recv_timeouted_last_time = true;
 
     status = UNINITIALIZED;
     return S_OK;
@@ -213,6 +232,10 @@ HRESULT cda::send_beacon() {
         cda::logln(std::string("send_beacon was called but the status was not good: ") + std::to_string(status));
         return E_ABORT;
     }
+    if (!recv_timeouted_last_time) {
+        return E_ABORT;
+    }
+    cda::logln("Trying to send beacon.");
     int rc;
     if ((rc = sendto(
         beacon_socket,
@@ -232,25 +255,50 @@ HRESULT cda::send_beacon() {
     return rc;
 }
 
-HRESULT cda::recv_img(uint8_t *dst) {
+HRESULT cda::recv_img(uint8_t *dst, size_t dst_len) {
     if (status != GOOD) {
         cda::logln(std::string("recv_img was called but the status was not good: ") + std::to_string(status));
         return E_FAIL;
     }
-    // blocking call. time-limit ensures we proceed even if no packets arrive in time
-    const auto bytes_reveived = recv(listen_socket, recvbuf, UDP_CAP, 0);
-    if (bytes_reveived == 0) {
-        cda::logln("Reveived 0 bytes. The Connection was closed.");
-        return E_FAIL;  // connection was closed (how?)
-    }
-    else if (bytes_reveived == SOCKET_ERROR) {
-        const int err = WSAGetLastError();
-        if (err != WSAETIMEDOUT) {
-            cda::logln(std::string("Receiving message failed with error ") + std::to_string(err));
+    const auto start = std::chrono::steady_clock::now();
+    while(true) {
+        // blocking call. time-limit ensures we proceed even if no packets arrive in time
+        const auto bytes_reveived = recv(listen_socket, recvbuf, UDP_CAP, 0);
+        if (bytes_reveived == 0) {
+            cda::logln("Reveived 0 bytes. The Connection was closed.");
             status = UNDEFINED;
-            return E_FAIL;
+            return E_FAIL;  // connection was closed (how?)
         }
-        return E_ABORT;
+
+        if (bytes_reveived == SOCKET_ERROR) {
+            const int err = WSAGetLastError();
+            if (err != WSAETIMEDOUT) {
+                cda::logln(std::string("Receiving message failed with error ") + std::to_string(err));
+                status = UNDEFINED;
+                return E_FAIL;
+            }
+        }
+        else {
+            int rc;
+            if ((rc = process(bytes_reveived, dst, dst_len)) == S_OK) {
+                if (recv_timeouted_last_time) {
+                    cda::logln("Receiving images...");
+                }
+                recv_timeouted_last_time = false;
+                return S_OK;
+            }
+            if (rc == E_UNEXPECTED) {
+                cda::logln("processing encountered an unexpected error.");
+                status = UNDEFINED;
+                return E_UNEXPECTED;
+            }
+        }
+
+        const auto end = std::chrono::steady_clock::now();
+        const auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        if (delta > 500) {
+            recv_timeouted_last_time = true;
+            return E_ABORT;
+        }
     }
-    return process(bytes_reveived, dst);
 }
