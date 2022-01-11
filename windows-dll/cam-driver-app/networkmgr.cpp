@@ -48,7 +48,7 @@ bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change 
         free(dec);
         return false; // non RGB
     }
-    const size_t dec_len = width * height * 3;
+    const size_t dec_len = ((size_t) width) * height * 3;
     if (dec_len > dst_len) {
         cda::logln("ABORT. Requested to write in buffer not capable of storing the image data.");
         cda::log("dec_len: ");
