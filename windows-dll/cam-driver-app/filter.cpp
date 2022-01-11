@@ -16,12 +16,7 @@
 #define DECLARE_PTR(type, ptr, expr) type* ptr = (type*)(expr);
 EXTERN_C const GUID CLSID_VCAM;
 
-// EXTERN
-extern bool running = false;
-extern RGBImg* buffered_image = NULL;
-// INTERN
-RGBImg* last_image = NULL;
-auto last_time = std::chrono::steady_clock::now();
+static auto last_time = std::chrono::steady_clock::now();
 
 //////////////////////////////////////////////////////////////////////////
 //  CVCam is the source filter which masquerades as a capture device
@@ -90,28 +85,17 @@ STDMETHODIMP_(ULONG) CVCamStream::Release() {
 
 HRESULT CVCamStream::OnThreadStartPlay()
 {
-    cda::log("CVCamStream::OnThreadStartPlay.\nRunning before: ");
-    cda::log(std::to_string(running).c_str());
+    cda::logln("CVCamStream::OnThreadStartPlay");
     // STRAM STARTS HERE. CORRESPONDS TO USER BUTTON PRESS
-    if (!running) {
-        running = true;
-        cda::setup_();
-    }
-    cda::log("\nRunning after: ");
-    cda::log(std::to_string(running).c_str());
-    cda::log("\n");
+    cda::setup();
     return NO_ERROR;
 }
 
 HRESULT CVCamStream::OnThreadDestroy() // GETS NEVER EXECUTED SOMEHOW...
 {
     cda::log("CVCamStream::OnThreadDestroy.\n");
-    if (running) {
-        running = false;
-        if (receiver.joinable())
-            receiver.join();
-        if (beacon.joinable())
-            beacon.join();
+    if (cda::cleanup() != S_OK) {
+        abort();
     }
     return NO_ERROR;
 }
@@ -125,25 +109,10 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
     const long lDataLen = pms->GetSize();
     pms->GetPointer(&pData);
 
-    if (buffered_image != NULL && (buffered_image->width * buffered_image->height * 3 == lDataLen)) {
-        /// DISPLAY DATA ///
-        memcpy(pData, buffered_image->buf, lDataLen);
-        if (last_image != NULL) {
-            free(last_image->buf);
-            free(last_image);
-        }
-        last_image = buffered_image;
-        buffered_image = NULL;
-    }
-    else if (last_image != NULL) {
-        memcpy(pData, last_image->buf, lDataLen);
-    }
-    else {
+    cda::send_beacon();
+    if (cda::recv_img(pData) != S_OK) {
         ZeroMemory(pData, lDataLen);
     }
-
-    Sleep(10);
-
     return NOERROR;
 }
 

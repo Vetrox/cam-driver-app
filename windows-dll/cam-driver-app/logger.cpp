@@ -32,3 +32,12 @@ void cda::log(const char* msg) {
 void cda::log(std::string msg) {
 	log(msg.c_str());
 }
+
+void cda::logln(std::string msg) {
+	log(msg + "\n");
+}
+
+void cda::logln(const char* msg) {
+	log(msg);
+	log("\n");
+}
