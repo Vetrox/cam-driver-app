@@ -1,7 +1,5 @@
 #pragma once
 
-#define CreateComObject(clsid, iid, var) CoCreateInstance(clsid, NULL, CLSCTX_INPROC_SERVER, iid, (void **)&var);
-
 EXTERN_C BOOL WINAPI DllEntryPoint(HINSTANCE, ULONG, LPVOID);
 STDAPI AMovieSetupRegisterServer(CLSID   clsServer, LPCWSTR szDescription, LPCWSTR szFileName, LPCWSTR szThreadingModel = L"Both", LPCWSTR szServerType = L"InprocServer32");
 STDAPI AMovieSetupUnregisterServer(CLSID clsServer);

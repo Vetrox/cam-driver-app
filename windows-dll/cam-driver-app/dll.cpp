@@ -8,7 +8,7 @@
 const AMOVIESETUP_MEDIATYPE AMSMediaTypesVCam =
 {
     &MEDIATYPE_Video,
-    &MEDIASUBTYPE_NULL
+    &MEDIASUBTYPE_RGB24
 };
 
 const AMOVIESETUP_PIN AMSPinVCam =
@@ -73,7 +73,7 @@ STDAPI RegisterFilters(BOOL bRegister)
     if (SUCCEEDED(hr))
     {
         IFilterMapper2* fm = 0;
-        hr = CreateComObject(CLSID_FilterMapper2, IID_IFilterMapper2, fm);
+        hr = CoCreateInstance(CLSID_FilterMapper2, NULL, CLSCTX_INPROC_SERVER, IID_IFilterMapper2, (void**)&fm);
         if (SUCCEEDED(hr))
         {
             if (bRegister)
@@ -84,12 +84,13 @@ STDAPI RegisterFilters(BOOL bRegister)
                 rf2.dwMerit = MERIT_DO_NOT_USE;
                 rf2.cPins = 1;
                 rf2.rgPins = &AMSPinVCam;
-                hr = fm->RegisterFilter(CLSID_VCAM,         // Filter CLSID.
-                    CAMERA_NAME,                            // Filter name.
-                    &pMoniker,                              // Device monkier
-                    &CLSID_VideoInputDeviceCategory,        // Video compressor category.
-                    NULL,                                   // Instance data.
-                    &rf2                                    // Pointer to filter information.
+                hr = fm->RegisterFilter(
+                    CLSID_VCAM,                         // Filter CLSID.
+                    CAMERA_NAME,                        // Filter name.
+                    &pMoniker,                          // Device monkier
+                    &CLSID_VideoInputDeviceCategory,    // Filter category.
+                    NULL,                               // Instance data.
+                    &rf2                                // Pointer to filter information.
                 );
             }
             else
