@@ -59,7 +59,7 @@ bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change 
         return false; // error writing
     }
 
-    memcpy(dst, dec, width * height * 3); // TODO: optimize amount of memcopies
+    memcpy(dst, dec, dec_len); // TODO: optimize amount of memcopies
     free(dec);
     return true;
 }
