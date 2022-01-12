@@ -15,5 +15,4 @@ constexpr auto NUMBITS = 24;
 const DWORD COMPRESSSION = BI_RGB;
 static const auto& MSUBTYPE = MEDIASUBTYPE_RGB24;//(GUID)FOURCCMap(COMPRESSSION);
 
-constexpr auto FPS_MIN = 30; // CHANGE AVGTIMEperFRAME to match this fps
-constexpr auto FPS_MAX = 30;
+constexpr auto FPS_NANO = 33'3333;

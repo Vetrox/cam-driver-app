@@ -19,26 +19,25 @@ public:
     STDMETHODIMP_(ULONG)    AddRef();
     STDMETHODIMP_(ULONG)    Release();
     //// IQualityControl //////////////////////////
-    STDMETHODIMP Notify(IBaseFilter* pSender, Quality q);
+    STDMETHODIMP Notify(IBaseFilter* pSender, Quality q) { return E_NOTIMPL; }
     //// IAMStreamConfig //////////////////////////
     STDMETHODIMP SetFormat(AM_MEDIA_TYPE* pmt);
     STDMETHODIMP GetFormat(AM_MEDIA_TYPE** ppmt);
     STDMETHODIMP GetNumberOfCapabilities(int* piCount, int* piSize);
     STDMETHODIMP GetStreamCaps(int iIndex, AM_MEDIA_TYPE** pmt, BYTE* pSCC);
     //// IKsPropertySet ///////////////////////////
-    STDMETHODIMP Set(REFGUID, DWORD, void*, DWORD, void*, DWORD);
+    STDMETHODIMP Set(REFGUID, DWORD, void*, DWORD, void*, DWORD) { return E_NOTIMPL; }
     STDMETHODIMP Get(REFGUID, DWORD, void*, DWORD, void*, DWORD, DWORD*);
     STDMETHODIMP QuerySupported(REFGUID, DWORD, DWORD*);
     //// CSourceStream ////////////////////////////
     CVCamStream(HRESULT* phr, CVCam* pParent, LPCWSTR pPinName);
     HRESULT OnThreadStartPlay();
     HRESULT OnThreadDestroy();
+    HRESULT OnThreadCreate() { return S_OK; }
     HRESULT FillBuffer(IMediaSample* pms);
     HRESULT DecideBufferSize(IMemAllocator* pIMemAlloc, ALLOCATOR_PROPERTIES* pProperties);
-    //HRESULT CheckMediaType(const CMediaType* pMediaType);
     HRESULT GetMediaType(CMediaType* pmt);
     HRESULT SetMediaType(const CMediaType* pmt);
-    HRESULT OnThreadCreate(void);
     ~CVCamStream();
 private:
     CVCam*              m_pParent;
