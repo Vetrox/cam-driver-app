@@ -13,7 +13,6 @@
 #include "networkmgr.h"
 #include "logger.h"
 
-#define DECLARE_PTR(type, ptr, expr) type* ptr = (type*)(expr);
 EXTERN_C const GUID CLSID_VCAM;
 
 // https://github.com/CatxFish/obs-virtual-cam/blob/master/src/virtual-source/virtual-cam.cpp
@@ -134,7 +133,7 @@ HRESULT CVCamStream::GetMediaType(CMediaType* pmt) {
 }
 
 HRESULT CVCamStream::SetMediaType(const CMediaType* pmt) {
-    DECLARE_PTR(VIDEOINFOHEADER, pvi, pmt->Format());
+    VIDEOINFOHEADER* pvi = (VIDEOINFOHEADER*) (pmt->Format());
     HRESULT hr = CSourceStream::SetMediaType(pmt);
     return hr;
 }
@@ -231,7 +230,7 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetStreamCaps(int iIndex, AM_MEDIA_TYPE**
     (*pmt)->lSampleSize = pvi->bmiHeader.biSizeImage;
     (*pmt)->cbFormat = sizeof(VIDEOINFOHEADER);
 
-    DECLARE_PTR(VIDEO_STREAM_CONFIG_CAPS, pvscc, pSCC);
+    VIDEO_STREAM_CONFIG_CAPS* pvscc = (VIDEO_STREAM_CONFIG_CAPS*)pSCC;
     ZeroMemory(pvscc, sizeof(VIDEO_STREAM_CONFIG_CAPS));
 
     pvscc->guid = FORMAT_VideoInfo;
