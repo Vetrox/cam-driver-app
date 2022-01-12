@@ -7,9 +7,9 @@ public:
     STDMETHODIMP                    QueryInterface(REFIID riid, void** ppv);
 
     IFilterGraph* GetGraph() { return m_pGraph; }
+    FILTER_STATE GetState() { return m_State; }
 private:
     CVCam(LPUNKNOWN lpunk, HRESULT* phr);
-    ~CVCam();
 };
 
 class CVCamStream : public CSourceStream, public IAMStreamConfig, public IKsPropertySet {
@@ -35,8 +35,8 @@ public:
     HRESULT OnThreadDestroy();
     HRESULT FillBuffer(IMediaSample* pms);
     HRESULT DecideBufferSize(IMemAllocator* pIMemAlloc, ALLOCATOR_PROPERTIES* pProperties);
-    HRESULT CheckMediaType(const CMediaType* pMediaType);
-    HRESULT GetMediaType(int iPosition, CMediaType* pmt);
+    //HRESULT CheckMediaType(const CMediaType* pMediaType);
+    HRESULT GetMediaType(CMediaType* pmt);
     HRESULT SetMediaType(const CMediaType* pmt);
     HRESULT OnThreadCreate(void);
     ~CVCamStream();

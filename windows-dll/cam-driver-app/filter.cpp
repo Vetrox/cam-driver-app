@@ -17,7 +17,7 @@
 EXTERN_C const GUID CLSID_VCAM;
 
 static auto last_time = std::chrono::steady_clock::now();
-
+// https://github.com/CatxFish/obs-virtual-cam/blob/master/src/virtual-source/virtual-cam.cpp
 //////////////////////////////////////////////////////////////////////////
 //  CVCam is the source filter which masquerades as a capture device
 //////////////////////////////////////////////////////////////////////////
@@ -32,11 +32,7 @@ CVCam::CVCam(LPUNKNOWN lpunk, HRESULT* phr) : CSource(CAMERA_NAME, lpunk, CLSID_
     CAutoLock cAutoLock(&m_cStateLock);
     // Create the one and only output pin
     m_paStreams = (CSourceStream**) new CVCamStream * [1];
-    m_paStreams[0] = new CVCamStream(phr, this, CAMERA_NAME);
-}
-
-CVCam::~CVCam()
-{
+    m_paStreams[0] = new CVCamStream(phr, this, L"Video");
 }
 
 HRESULT CVCam::QueryInterface(REFIID riid, void** ppv) {
@@ -55,7 +51,7 @@ CVCamStream::CVCamStream(HRESULT* phr, CVCam* pParent, LPCWSTR pPinName) : CSour
 
     // Set the default media type as 320x240x24@15
     //TODO: Change to other resolution
-    GetMediaType(4, &m_mt);
+    GetMediaType(&m_mt);
 }
 
 
@@ -88,7 +84,7 @@ HRESULT CVCamStream::OnThreadStartPlay()
     cda::logln("CVCamStream::OnThreadStartPlay");
     // STRAM STARTS HERE. CORRESPONDS TO USER BUTTON PRESS
     cda::setup();
-    return NO_ERROR;
+    return S_OK;
 }
 
 HRESULT CVCamStream::OnThreadDestroy() // GETS NEVER EXECUTED SOMEHOW...
@@ -97,7 +93,7 @@ HRESULT CVCamStream::OnThreadDestroy() // GETS NEVER EXECUTED SOMEHOW...
     if (cda::cleanup() != S_OK) {
         abort();
     }
-    return NO_ERROR;
+    return S_OK;
 }
 
 HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
@@ -109,10 +105,31 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
     const long lDataLen = pms->GetSize();
     pms->GetPointer(&pData);
 
-    cda::send_beacon();
-    if (cda::recv_img(pData, lDataLen) != S_OK) {
+    //cda::send_beacon();
+
+    // TODO: TEMPORARY AREA
+   /* BYTE* temp = new BYTE[1280 * 720 * 3];
+    HRESULT h = cda::recv_img(temp, 1280 * 720 * 3);
+    if (h != S_OK) {
         ZeroMemory(pData, lDataLen);
     }
+    for (size_t i = 0; i < 1280 * 720; i++) {
+        pData[i * 4]        = 0;
+        pData[i * 4 + 1]    = temp[i * 3];
+        pData[i * 4 + 2]    = temp[i * 3 + 1];
+        pData[i * 4 + 3]    = temp[i * 3 + 2];
+    }
+    delete[] temp;*/
+    //
+    /*if (h != S_OK) {
+        ZeroMemory(pData, lDataLen);
+    }*/
+
+
+    for (size_t i = 0; i < lDataLen; i++) {
+        pData[i] = (BYTE)(rand());
+    }
+    
     return NOERROR;
 }
 
@@ -126,34 +143,38 @@ STDMETHODIMP CVCamStream::Notify(IBaseFilter* pSender, Quality q) {
 // This is called when the output format has been negotiated
 //////////////////////////////////////////////////////////////////////////
 HRESULT CVCamStream::SetMediaType(const CMediaType* pmt) {
+    DECLARE_PTR(VIDEOINFOHEADER, pvi, pmt->Format());
     HRESULT hr = CSourceStream::SetMediaType(pmt);
     return hr;
 }
 
 // See Directshow help topic for IAMStreamConfig for details on this method
-HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType* pmt) {
+HRESULT CVCamStream::GetMediaType(CMediaType* pmt) {
+    // TODO: redo
+   /* cda::log("GetMediaType called with iPosition ");
+    cda::logln(std::to_string(iPosition));
     if (iPosition < 0) return E_INVALIDARG;
-    if (iPosition > 8) return VFW_S_NO_MORE_ITEMS;
+    if (iPosition != 0) return VFW_S_NO_MORE_ITEMS;*/
 
-    if (iPosition == 0)
+    /*if (iPosition == 0)
     {
         *pmt = m_mt;
         return S_OK;
-    }
+    }*/
 
     DECLARE_PTR(VIDEOINFOHEADER, pvi, pmt->AllocFormatBuffer(sizeof(VIDEOINFOHEADER)));
     ZeroMemory(pvi, sizeof(VIDEOINFOHEADER));
 
-    pvi->bmiHeader.biCompression = BI_BITFIELDS; // original: BI_RGB --- BI_BITFIELDS
-    pvi->bmiHeader.biBitCount = 24;
+    pvi->bmiHeader.biCompression = COMPRESSSION; // original: BI_RGB --- BI_BITFIELDS
+    pvi->bmiHeader.biBitCount = NUMBITS;
     pvi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    pvi->bmiHeader.biWidth = RATIO_WIDTH * iPosition;
-    pvi->bmiHeader.biHeight = RATIO_HEIGHT * iPosition;
+    pvi->bmiHeader.biWidth = CAM_WIDTH;         // seems to be controlling the real resolution.
+    pvi->bmiHeader.biHeight = CAM_HEIGHT;       // seems to be controlling the real resolution.
     pvi->bmiHeader.biPlanes = 1;
     pvi->bmiHeader.biSizeImage = GetBitmapSize(&pvi->bmiHeader);
     pvi->bmiHeader.biClrImportant = 0;
 
-    pvi->AvgTimePerFrame = 1000000;
+    pvi->AvgTimePerFrame = 333333;
 
     SetRectEmpty(&(pvi->rcSource)); // we want the whole image area rendered.
     SetRectEmpty(&(pvi->rcTarget)); // no particular destination rectangle
@@ -163,20 +184,44 @@ HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType* pmt) {
     pmt->SetTemporalCompression(FALSE);
 
     // Work out the GUID for the subtype from the header info.
-    const GUID SubTypeGUID = GetBitmapSubtype(&pvi->bmiHeader);
-    pmt->SetSubtype(&SubTypeGUID);
+    //const GUID SubTypeGUID = GetBitmapSubtype(&pvi->bmiHeader);
+    pmt->SetSubtype(&MSUBTYPE);
     pmt->SetSampleSize(pvi->bmiHeader.biSizeImage);
+
+    
+
 
     return NOERROR;
 
 } // GetMediaType
 
 // This method is called to see if a given output format is supported
-HRESULT CVCamStream::CheckMediaType(const CMediaType* pMediaType) {
-    if (*pMediaType != m_mt)
-        return E_INVALIDARG;
-    return S_OK;
-} // CheckMediaType
+//HRESULT CVCamStream::CheckMediaType(const CMediaType* pMediaType) {
+//    return S_OK;
+//    if (*pMediaType == nullptr) {
+//        return E_FAIL;
+//    }
+//// https://github.com/CatxFish/obs-virtual-cam/blob/master/src/virtual-source/virtual-cam.cpp
+//    VIDEOINFOHEADER* pvi = (VIDEOINFOHEADER*)(pMediaType->Format());
+//
+//    const GUID* type = pMediaType->Type();
+//    const GUID* info = pMediaType->FormatType();
+//    const GUID* subtype = pMediaType->Subtype();
+//
+//    if (*type != MEDIATYPE_Video)
+//        return E_INVALIDARG;
+//
+//    if (*info != FORMAT_VideoInfo)
+//        return E_INVALIDARG;
+//
+//    if (*subtype != MSUBTYPE)
+//        return E_INVALIDARG;
+//
+//    if (pvi->bmiHeader.biWidth != CAM_WIDTH || pvi->bmiHeader.biHeight != CAM_HEIGHT)
+//        return E_INVALIDARG;
+//
+//    return S_OK;
+//} // CheckMediaType
 
 // This method is called after the pins are connected to allocate buffers to stream data
 HRESULT CVCamStream::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIES* pProperties) {
@@ -185,7 +230,13 @@ HRESULT CVCamStream::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIE
 
     VIDEOINFOHEADER* pvi = (VIDEOINFOHEADER*)m_mt.Format();
     pProperties->cBuffers = 1;
-    pProperties->cbBuffer = pvi->bmiHeader.biSizeImage;
+    if (pvi != nullptr) {
+        pProperties->cbBuffer = pvi->bmiHeader.biSizeImage;
+    }
+    else {
+        cda::logln("null");
+    }
+    
 
     ALLOCATOR_PROPERTIES Actual;
     hr = pAlloc->SetProperties(pProperties, &Actual);
@@ -198,7 +249,7 @@ HRESULT CVCamStream::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIE
 
 // Called when graph is run
 HRESULT CVCamStream::OnThreadCreate() {
-    return NOERROR;
+    return S_OK;
 } // OnThreadCreate
 
 
@@ -207,7 +258,21 @@ HRESULT CVCamStream::OnThreadCreate() {
 //////////////////////////////////////////////////////////////////////////
 
 HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE* pmt) {
+    if (pmt == nullptr) {
+        return E_FAIL;
+    }
+
+    if (m_pParent->GetState() != State_Stopped)
+        return E_FAIL;
+
+    /*if (CheckMediaType((CMediaType*)pmt) != S_OK) {
+        return E_FAIL;
+    }*/
+
+    VIDEOINFOHEADER* pvi = (VIDEOINFOHEADER*)(pmt->pbFormat);
     m_mt = *pmt;
+    //m_mt.SetFormat(m_mt.Format(), sizeof(VIDEOINFOHEADER));
+
     IPin* pin;
     ConnectedTo(&pin);
     if (pin)
@@ -224,66 +289,50 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetFormat(AM_MEDIA_TYPE** ppmt) {
 }
 
 HRESULT STDMETHODCALLTYPE CVCamStream::GetNumberOfCapabilities(int* piCount, int* piSize) {
-    *piCount = 8;
+    *piCount = 1;
     *piSize = sizeof(VIDEO_STREAM_CONFIG_CAPS);
     return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE CVCamStream::GetStreamCaps(int iIndex, AM_MEDIA_TYPE** pmt, BYTE* pSCC) {
+    if (iIndex < 0 || iIndex > 1) {
+        return E_INVALIDARG;
+    }
     *pmt = CreateMediaType(&m_mt);
     DECLARE_PTR(VIDEOINFOHEADER, pvi, (*pmt)->pbFormat);
 
-    if (iIndex == 0) iIndex = 4;
+    cda::log("GetStreamCaps with iIndex ");
+    cda::logln(std::to_string(iIndex));
 
-    pvi->bmiHeader.biCompression = BI_RGB;
-    pvi->bmiHeader.biBitCount = 24;
     pvi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    pvi->bmiHeader.biWidth = RATIO_WIDTH * iIndex;
-    pvi->bmiHeader.biHeight = RATIO_HEIGHT * iIndex;
+    pvi->bmiHeader.biWidth = CAM_WIDTH;
+    pvi->bmiHeader.biHeight = CAM_HEIGHT;
     pvi->bmiHeader.biPlanes = 1;
+    pvi->bmiHeader.biBitCount = NUMBITS;
+    pvi->bmiHeader.biCompression = COMPRESSSION;
     pvi->bmiHeader.biSizeImage = GetBitmapSize(&pvi->bmiHeader);
     pvi->bmiHeader.biClrImportant = 0;
+    pvi->AvgTimePerFrame = 333333;
 
     SetRectEmpty(&(pvi->rcSource)); // we want the whole image area rendered.
     SetRectEmpty(&(pvi->rcTarget)); // no particular destination rectangle
 
     (*pmt)->majortype = MEDIATYPE_Video;
-    (*pmt)->subtype = MEDIASUBTYPE_RGB24;
+    (*pmt)->subtype = MSUBTYPE; //TODO: change this to MEDIASUBTYPE_RGB32 and make it XRGB
+// supported formats https://github.com/obsproject/obs-studio/blob/master/plugins/win-dshow/win-dshow.cpp#L414
     (*pmt)->formattype = FORMAT_VideoInfo;
-    (*pmt)->bTemporalCompression = FALSE;
     (*pmt)->bFixedSizeSamples = FALSE;
+    (*pmt)->bTemporalCompression = FALSE;
     (*pmt)->lSampleSize = pvi->bmiHeader.biSizeImage;
     (*pmt)->cbFormat = sizeof(VIDEOINFOHEADER);
 
     DECLARE_PTR(VIDEO_STREAM_CONFIG_CAPS, pvscc, pSCC);
+    ZeroMemory(pvscc, sizeof(VIDEO_STREAM_CONFIG_CAPS));
 
     pvscc->guid = FORMAT_VideoInfo;
-    pvscc->VideoStandard = AnalogVideo_None;
-    pvscc->InputSize.cx = 640;
-    pvscc->InputSize.cy = 480;
-    pvscc->MinCroppingSize.cx = 80;
-    pvscc->MinCroppingSize.cy = 60;
-    pvscc->MaxCroppingSize.cx = 640;
-    pvscc->MaxCroppingSize.cy = 480;
-    pvscc->CropGranularityX = 80;
-    pvscc->CropGranularityY = 60;
-    pvscc->CropAlignX = 0;
-    pvscc->CropAlignY = 0;
-
-    pvscc->MinOutputSize.cx = 80;
-    pvscc->MinOutputSize.cy = 60;
-    pvscc->MaxOutputSize.cx = 640;
-    pvscc->MaxOutputSize.cy = 480;
-    pvscc->OutputGranularityX = 0;
-    pvscc->OutputGranularityY = 0;
-    pvscc->StretchTapsX = 0;
-    pvscc->StretchTapsY = 0;
-    pvscc->ShrinkTapsX = 0;
-    pvscc->ShrinkTapsY = 0;
-    pvscc->MinFrameInterval = 200000;   // 50 fps
-    pvscc->MaxFrameInterval = 50000000; // 0.2 fps
-    pvscc->MinBitsPerSecond = (80 * 60 * 3 * 8) / 5;
-    pvscc->MaxBitsPerSecond = 640 * 480 * 3 * 8 * 50;
+    pvscc->VideoStandard = AnalogVideo_None;    // Digital sensor.
+    pvscc->MinFrameInterval = 1000 * 10000 / FPS_MIN;         // fps
+    pvscc->MaxFrameInterval = 1000 * 10000 / FPS_MAX;         // fps
 
     return S_OK;
 }

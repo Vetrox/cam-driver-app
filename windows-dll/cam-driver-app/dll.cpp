@@ -8,7 +8,7 @@
 const AMOVIESETUP_MEDIATYPE AMSMediaTypesVCam =
 {
     &MEDIATYPE_Video,
-    &MEDIASUBTYPE_RGB24
+    &MSUBTYPE
 };
 
 const AMOVIESETUP_PIN AMSPinVCam =
@@ -20,7 +20,7 @@ const AMOVIESETUP_PIN AMSPinVCam =
     FALSE,                 // Can we have more than one instance of this type of pin
     &CLSID_NULL,           // (obsolete) Connects to filter 
     NULL,                  // (obsolete) Connects to pin 
-    1,                     // Number of media types supported by this pin.
+    1,                     // Number of media types supported by this pin. TODO: consider changing to 0
     &AMSMediaTypesVCam     // Pin Media types (1 Video)
 };
 
