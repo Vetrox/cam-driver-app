@@ -3,7 +3,7 @@
 class CVCam : public CSource {
 public:
     //// IUnknown /////////////////////////////////
-    static STDMETHODIMP_(CUnknown*) CreateInstance(LPUNKNOWN lpunk, HRESULT* phr);
+    static STDMETHODIMP_(CUnknown*) CreateInstance(LPUNKNOWN lpunk, HRESULT* phr) { return new CVCam(lpunk, phr); }
     STDMETHODIMP                    QueryInterface(REFIID riid, void** ppv);
 
     IFilterGraph* GetGraph() { return m_pGraph; }
@@ -16,8 +16,8 @@ class CVCamStream : public CSourceStream, public IAMStreamConfig, public IKsProp
 public:
     //// IUnknown /////////////////////////////////
     STDMETHODIMP            QueryInterface(REFIID riid, void** ppv);
-    STDMETHODIMP_(ULONG)    AddRef();
-    STDMETHODIMP_(ULONG)    Release();
+    STDMETHODIMP_(ULONG)    AddRef() { return GetOwner()->AddRef(); }
+    STDMETHODIMP_(ULONG)    Release() { return GetOwner()->Release(); }
     //// IQualityControl //////////////////////////
     STDMETHODIMP Notify(IBaseFilter* pSender, Quality q) { return E_NOTIMPL; }
     //// IAMStreamConfig //////////////////////////
@@ -30,15 +30,17 @@ public:
     STDMETHODIMP Get(REFGUID, DWORD, void*, DWORD, void*, DWORD, DWORD*);
     STDMETHODIMP QuerySupported(REFGUID, DWORD, DWORD*);
     //// CSourceStream ////////////////////////////
-    CVCamStream(HRESULT* phr, CVCam* pParent, LPCWSTR pPinName);
+    CVCamStream(HRESULT* phr, CVCam* pParent, LPCWSTR pPinName) : 
+        CSourceStream(CAMERA_NAME, phr, pParent, pPinName), m_pParent(pParent) { 
+        GetMediaType(&m_mt); 
+    }
     HRESULT OnThreadStartPlay();
     HRESULT OnThreadDestroy();
     HRESULT OnThreadCreate() { return S_OK; }
     HRESULT FillBuffer(IMediaSample* pms);
     HRESULT DecideBufferSize(IMemAllocator* pIMemAlloc, ALLOCATOR_PROPERTIES* pProperties);
     HRESULT GetMediaType(CMediaType* pmt);
-    HRESULT SetMediaType(const CMediaType* pmt);
-    ~CVCamStream();
+    HRESULT SetMediaType(const CMediaType* pmt) { return CSourceStream::SetMediaType(pmt); }
 private:
     CVCam*              m_pParent;
     HBITMAP             m_hLogoBmp;
