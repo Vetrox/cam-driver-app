@@ -78,7 +78,8 @@ HRESULT CVCamStream::GetMediaType(CMediaType* pmt) {
     pmt->SetType(&MEDIATYPE_Video);
     pmt->SetFormatType(&FORMAT_VideoInfo);
     pmt->SetTemporalCompression(FALSE);
-    pmt->SetSubtype(&MSUBTYPE);
+    const GUID SubTypeGUID = GetBitmapSubtype(&pvi->bmiHeader);
+    pmt->SetSubtype(&SubTypeGUID);
     pmt->SetSampleSize(pvi->bmiHeader.biSizeImage);
 
     return S_OK;
