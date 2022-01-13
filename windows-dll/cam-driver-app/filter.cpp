@@ -57,30 +57,34 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
     return NOERROR;
 }
 
+// preferred media type. gets stored in m_mt in constructor
 HRESULT CVCamStream::GetMediaType(CMediaType* pmt) {
     VIDEOINFOHEADER* pvi = (VIDEOINFOHEADER*) pmt->AllocFormatBuffer(sizeof(VIDEOINFOHEADER));
     ZeroMemory(pvi, sizeof(VIDEOINFOHEADER));
 
-    pvi->bmiHeader.biCompression    = COMPRESSSION;
-    pvi->bmiHeader.biBitCount       = NUMBITS;
     pvi->bmiHeader.biSize           = sizeof(BITMAPINFOHEADER);
     pvi->bmiHeader.biWidth          = CAM_WIDTH;
     pvi->bmiHeader.biHeight         = CAM_HEIGHT;
     pvi->bmiHeader.biPlanes         = 1;
+    pvi->bmiHeader.biBitCount       = NUMBITS;
+    pvi->bmiHeader.biCompression    = COMPRESSSION;
     pvi->bmiHeader.biSizeImage      = GetBitmapSize(&pvi->bmiHeader);
+    pvi->bmiHeader.biXPelsPerMeter  = CAM_WIDTH * 2; // 0.5 meter screen.
+    pvi->bmiHeader.biYPelsPerMeter  = CAM_HEIGHT * 2;
+    pvi->bmiHeader.biClrUsed        = 0;
     pvi->bmiHeader.biClrImportant   = 0;
-
-    pvi->AvgTimePerFrame = FPS_NANO;
+    pvi->dwBitRate          = pvi->bmiHeader.biSizeImage * (1000'0000 / FPS_NANO);
+    pvi->AvgTimePerFrame    = FPS_NANO;
 
     SetRectEmpty(&(pvi->rcSource));
     SetRectEmpty(&(pvi->rcTarget));
 
     pmt->SetType(&MEDIATYPE_Video);
-    pmt->SetFormatType(&FORMAT_VideoInfo);
-    pmt->SetTemporalCompression(FALSE);
-    const GUID SubTypeGUID = GetBitmapSubtype(&pvi->bmiHeader);
+    const auto SubTypeGUID = GetBitmapSubtype(&pvi->bmiHeader);
     pmt->SetSubtype(&SubTypeGUID);
     pmt->SetSampleSize(pvi->bmiHeader.biSizeImage);
+    pmt->SetFormatType(&FORMAT_VideoInfo);
+    pmt->SetTemporalCompression(FALSE);
 
     return S_OK;
 }
@@ -97,21 +101,29 @@ HRESULT CVCamStream::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIE
     if (FAILED(hr)) return hr;
     if (Actual.cbBuffer < pProperties->cbBuffer) return E_FAIL;
 
-    return NOERROR;
-}
-
-HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE* pmt) {
-    if (pmt == nullptr || m_pParent->GetState() != State_Stopped)
-        return E_FAIL;
-
-    IPin* pin;
-    ConnectedTo(&pin);
-    if (pin) {
-        m_pParent->GetGraph()->Reconnect(this);
-    }
     return S_OK;
 }
 
+// just say we set it, even though we don't care
+HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE* pmt) {
+    cda::logln("::SetFormat. Trying to set the format to:");
+    if (pmt == nullptr) {
+        cda::logln("nullptr (may be used to reset our pin)");
+    }
+    else {
+        VIDEOINFOHEADER* vih = (VIDEOINFOHEADER*) (pmt->pbFormat);
+        cda::log("Width: ");
+        cda::logln(std::to_string(vih->bmiHeader.biWidth));
+        cda::log("Height: ");
+        cda::logln(std::to_string(vih->bmiHeader.biHeight));
+        cda::log("Bitcount: ");
+        cda::logln(std::to_string(vih->bmiHeader.biBitCount));
+    }
+    
+    return S_OK;
+}
+
+// current or prefferred format (we only have one)
 HRESULT STDMETHODCALLTYPE CVCamStream::GetFormat(AM_MEDIA_TYPE** ppmt) {
     *ppmt = CreateMediaType(&m_mt);
     return S_OK;
@@ -123,37 +135,10 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetNumberOfCapabilities(int* piCount, int
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE CVCamStream::GetStreamCaps(int iIndex, AM_MEDIA_TYPE** pmt, BYTE* pSCC) {
-    if (iIndex != 0) return E_INVALIDARG;
-
+HRESULT STDMETHODCALLTYPE CVCamStream::GetStreamCaps(int iIndex, AM_MEDIA_TYPE** pmt, BYTE* deprecated) {
+    if (iIndex < 0) return E_INVALIDARG;
+    if (iIndex > 0) return S_FALSE;
     GetFormat(pmt);
-    VIDEOINFOHEADER* pvi = (VIDEOINFOHEADER*)(*pmt)->pbFormat;
-
-    SetRectEmpty(&(pvi->rcSource));
-    SetRectEmpty(&(pvi->rcTarget));
-    pvi->bmiHeader.biSize           = sizeof(BITMAPINFOHEADER);
-    pvi->bmiHeader.biWidth          = CAM_WIDTH;
-    pvi->bmiHeader.biHeight         = CAM_HEIGHT;
-    pvi->bmiHeader.biPlanes         = 1;
-    pvi->bmiHeader.biBitCount       = NUMBITS;
-    pvi->bmiHeader.biCompression    = COMPRESSSION;
-    pvi->bmiHeader.biSizeImage      = GetBitmapSize(&pvi->bmiHeader);
-    pvi->bmiHeader.biClrImportant   = 0;
-    pvi->AvgTimePerFrame            = FPS_NANO;
-    (*pmt)->majortype               = MEDIATYPE_Video;
-    (*pmt)->subtype                 = MSUBTYPE;
-    (*pmt)->formattype              = FORMAT_VideoInfo;
-    (*pmt)->bFixedSizeSamples       = FALSE;
-    (*pmt)->bTemporalCompression    = FALSE;
-    (*pmt)->lSampleSize             = pvi->bmiHeader.biSizeImage;
-    (*pmt)->cbFormat                = sizeof(VIDEOINFOHEADER);
-
-    VIDEO_STREAM_CONFIG_CAPS* pvscc = (VIDEO_STREAM_CONFIG_CAPS*)pSCC;
-    ZeroMemory(pvscc, sizeof(VIDEO_STREAM_CONFIG_CAPS));
-    pvscc->guid                     = FORMAT_VideoInfo;
-    pvscc->VideoStandard            = AnalogVideo_None;
-    pvscc->MinFrameInterval         = FPS_NANO;
-    pvscc->MaxFrameInterval         = FPS_NANO;
     return S_OK;
 }
 

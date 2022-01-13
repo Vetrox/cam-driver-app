@@ -10,9 +10,9 @@ constexpr auto CAMERA_NAME = L"cam-driver-app";
 constexpr auto CAM_WIDTH = 1280;
 constexpr auto CAM_HEIGHT = 720;
 
-constexpr auto NUMBITS = 24;
+constexpr auto NUMBITS = 32;
 // BI_RGB, BI_BITFIELDS, FCC('YUY2')
 const DWORD COMPRESSSION = BI_RGB;
-static const auto& MSUBTYPE = MEDIASUBTYPE_RGB24;//(GUID)FOURCCMap(COMPRESSSION);
+static const auto& MSUBTYPE = MEDIASUBTYPE_RGB32;//(GUID)FOURCCMap(COMPRESSSION);
 
 constexpr auto FPS_NANO = 33'3333;

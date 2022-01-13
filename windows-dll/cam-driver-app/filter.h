@@ -19,7 +19,7 @@ public:
     STDMETHODIMP_(ULONG)    AddRef() { return GetOwner()->AddRef(); }
     STDMETHODIMP_(ULONG)    Release() { return GetOwner()->Release(); }
     //// IQualityControl //////////////////////////
-    STDMETHODIMP Notify(IBaseFilter* pSender, Quality q) { return E_NOTIMPL; }
+    //STDMETHODIMP Notify(IBaseFilter* pSender, Quality q) { return E_NOTIMPL; }
     //// IAMStreamConfig //////////////////////////
     STDMETHODIMP SetFormat(AM_MEDIA_TYPE* pmt);
     STDMETHODIMP GetFormat(AM_MEDIA_TYPE** ppmt);
@@ -42,8 +42,5 @@ public:
     HRESULT GetMediaType(CMediaType* pmt);
     HRESULT SetMediaType(const CMediaType* pmt) { return CSourceStream::SetMediaType(pmt); }
 private:
-    CVCam*              m_pParent;
-    HBITMAP             m_hLogoBmp;
-    CCritSec            m_cSharedState;
-    IReferenceClock*    m_pClock;
+    CVCam*  m_pParent;
 };
