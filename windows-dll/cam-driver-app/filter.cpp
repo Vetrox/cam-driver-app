@@ -51,10 +51,9 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
     BYTE* pData;
     const long lDataLen = pms->GetSize();
     pms->GetPointer(&pData);
-    for (auto i = 0; i < lDataLen; i++) {
-        pData[i] = (BYTE)(rand());
-    }
-    return NOERROR;
+    cda::send_beacon();
+    cda::recv_img(pData, lDataLen);
+    return S_OK;
 }
 
 // preferred media type. gets stored in m_mt in constructor
@@ -87,6 +86,23 @@ HRESULT CVCamStream::GetMediaType(CMediaType* pmt) {
     pmt->SetTemporalCompression(FALSE);
 
     return S_OK;
+}
+
+inline HRESULT CVCamStream::SetMediaType(const CMediaType* pmt) {
+    cda::logln("SetMediaType. The format has been negotiated:");
+    if (pmt == nullptr) {
+        cda::logln("nullptr (may be used to reset our pin)");
+    }
+    else {
+        VIDEOINFOHEADER* vih = (VIDEOINFOHEADER*)(pmt->pbFormat);
+        cda::log("Width: ");
+        cda::logln(std::to_string(vih->bmiHeader.biWidth));
+        cda::log("Height: ");
+        cda::logln(std::to_string(vih->bmiHeader.biHeight));
+        cda::log("Bitcount: ");
+        cda::logln(std::to_string(vih->bmiHeader.biBitCount));
+    }
+    return CSourceStream::SetMediaType(pmt);
 }
 
 HRESULT CVCamStream::DecideBufferSize(IMemAllocator* pAlloc, ALLOCATOR_PROPERTIES* pProperties) {
@@ -140,6 +156,14 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetStreamCaps(int iIndex, AM_MEDIA_TYPE**
     if (iIndex > 0) return S_FALSE;
     GetFormat(pmt);
     return S_OK;
+}
+
+
+//// IKsPropertySet ///////////////////////////
+
+inline STDMETHODIMP_(HRESULT __stdcall) CVCamStream::Set(REFGUID, DWORD, void*, DWORD, void*, DWORD) {
+    cda::logln("IKsPropertySet::Set was called.");
+    return E_NOTIMPL;
 }
 
 HRESULT CVCamStream::Get(

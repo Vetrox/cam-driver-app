@@ -3,10 +3,12 @@
 #include <ws2tcpip.h>
 #include <stdint.h>
 
+#include "config.h"
 #include "jpgd.h"
 #include "logger.h"
 #include "networkmgr.h"
 
+static constexpr auto timeout_ms = 500;
 static constexpr auto PORT = "50684";
 static constexpr size_t header_size = 2;
 static constexpr auto PAYLOAD_SIZE = 65000;
@@ -34,7 +36,11 @@ static bool recv_timeouted_last_time = true;
 
 bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change this to use HRESULT
     
-    // from https://github.com/richgel999/jpeg-compressor
+    if constexpr (NUMBYTES != 3 && NUMBYTES != 4) {
+        cda::logln("Error can only decompress into 4 or 3 bytes. ARGB or RGB");
+        return false;
+    }
+
     int actual_comps, width, height;
     uint8_t* dec = jpgd::decompress_jpeg_image_from_memory(
         (uint8_t*)(imgbuf),
@@ -42,13 +48,15 @@ bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change 
         &width,
         &height,
         &actual_comps,
-        3
-    );
-    if (actual_comps != 3) {
+        NUMBYTES
+    ); // 13.3752 ms (x86)
+
+    if (actual_comps != NUMBYTES) {
+        cda::logln("The requested number of bytes wasn't able to be unpacked to by the decompressor.");
         free(dec);
-        return false; // non RGB
+        return false;
     }
-    const size_t dec_len = ((size_t) width) * height * 3;
+    const size_t dec_len = ((size_t) width) * height * NUMBYTES;
     if (dec_len > dst_len) {
         cda::logln("ABORT. Requested to write in buffer not capable of storing the image data.");
         cda::log("dec_len: ");
@@ -58,8 +66,28 @@ bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change 
         free(dec);
         return false; // error writing
     }
-
-    memcpy(dst, dec, dec_len); // TODO: optimize amount of memcopies
+    
+    // memcpy takes 0.3 ms (x86)
+    // memcpy(dst, dec, dec_len);
+    
+    // write image horizontally flipped to dst. Takes about 1.4 ms (x86)
+    const size_t w = (size_t)width, h = (size_t)height;
+    for (size_t r = 0; r < h; r++) {
+        for (size_t c = 0; c < w; c++) {
+            if constexpr (NUMBYTES == 3) {
+                dst[r * w * NUMBYTES + c * NUMBYTES + 0] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 3];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 1] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 2];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 2] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 1];
+            }
+            else { // 4
+                dst[r * w * NUMBYTES + c * NUMBYTES + 0] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 4];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 1] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 3];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 2] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 2];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 3] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 1];
+            }
+            
+        }
+    }
     free(dec);
     return true;
 }
@@ -158,8 +186,8 @@ HRESULT cda::setup() {
     freeaddrinfo(listen_addrinfo);
 
     // set the timeout
-    int timeout_ms = 500;
-    if ((rc = setsockopt(listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_ms, sizeof(timeout_ms))) == SOCKET_ERROR) {
+    int t_ms = timeout_ms;
+    if ((rc = setsockopt(listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&t_ms, sizeof(t_ms))) == SOCKET_ERROR) {
         cda::logln(std::string("Requesting the timeout interval returned an error: ") + std::to_string(WSAGetLastError()));
         status = UNDEFINED; 
         return rc;
@@ -296,7 +324,7 @@ HRESULT cda::recv_img(uint8_t *dst, size_t dst_len) {
 
         const auto end = std::chrono::steady_clock::now();
         const auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        if (delta > 500) {
+        if (delta > timeout_ms) {
             recv_timeouted_last_time = true;
             return E_ABORT;
         }

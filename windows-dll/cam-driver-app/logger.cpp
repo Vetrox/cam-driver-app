@@ -33,11 +33,67 @@ void cda::log(std::string msg) {
 	log(msg.c_str());
 }
 
-void cda::logln(std::string msg) {
-	log(msg + "\n");
+void cda::log(long long msg) {
+	log(std::to_string(msg));
+}
+void cda::log(long msg) {
+	log(std::to_string(msg));
+}
+void cda::log(unsigned long long msg) {
+	log(std::to_string(msg));
+}
+void cda::log(unsigned long msg) {
+	log(std::to_string(msg));
+}
+void cda::log(double msg) {
+	log(std::to_string(msg));
+}
+void cda::log(long double msg) {
+	log(std::to_string(msg));
+}
+void cda::log(float msg) {
+	log(std::to_string(msg));
+}
+void cda::log(int msg) {
+	log(std::to_string(msg));
+}
+void cda::log(unsigned int msg) {
+	log(std::to_string(msg));
 }
 
 void cda::logln(const char* msg) {
 	log(msg);
 	log("\n");
+}
+
+void cda::logln(std::string msg) {
+	logln(msg.c_str());
+}
+
+void cda::logln(long long msg) {
+	logln(std::to_string(msg));
+}
+void cda::logln(long msg) {
+	logln(std::to_string(msg));
+}
+void cda::logln(unsigned long long msg) {
+	logln(std::to_string(msg));
+}
+void cda::logln(unsigned long msg) {
+	logln(std::to_string(msg));
+}
+void cda::logln(double msg) {
+	logln(std::to_string(msg));
+}
+void cda::logln(long double msg) {
+	logln(std::to_string(msg));
+}
+void cda::logln(float msg) {
+	logln(std::to_string(msg));
+}
+void cda::logln(int msg) {
+	logln(std::to_string(msg));
+}
+void cda::logln(unsigned int msg) {
+	logln(std::to_string(msg));
 }

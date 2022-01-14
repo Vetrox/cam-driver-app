@@ -23,8 +23,10 @@
     <ClInclude Include="dll.h" />
     <ClInclude Include="filter.h" />
     <ClInclude Include="jpgd.h" />
+    <ClInclude Include="jpgd_idct.h" />
     <ClInclude Include="logger.h" />
     <ClInclude Include="networkmgr.h" />
+    <ClInclude Include="timer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dll.cpp" />

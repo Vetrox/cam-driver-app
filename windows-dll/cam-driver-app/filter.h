@@ -26,7 +26,7 @@ public:
     STDMETHODIMP GetNumberOfCapabilities(int* piCount, int* piSize);
     STDMETHODIMP GetStreamCaps(int iIndex, AM_MEDIA_TYPE** pmt, BYTE* pSCC);
     //// IKsPropertySet ///////////////////////////
-    STDMETHODIMP Set(REFGUID, DWORD, void*, DWORD, void*, DWORD) { return E_NOTIMPL; }
+    STDMETHODIMP Set(REFGUID, DWORD, void*, DWORD, void*, DWORD);
     STDMETHODIMP Get(REFGUID, DWORD, void*, DWORD, void*, DWORD, DWORD*);
     STDMETHODIMP QuerySupported(REFGUID, DWORD, DWORD*);
     //// CSourceStream ////////////////////////////
@@ -40,7 +40,7 @@ public:
     HRESULT FillBuffer(IMediaSample* pms);
     HRESULT DecideBufferSize(IMemAllocator* pIMemAlloc, ALLOCATOR_PROPERTIES* pProperties);
     HRESULT GetMediaType(CMediaType* pmt);
-    HRESULT SetMediaType(const CMediaType* pmt) { return CSourceStream::SetMediaType(pmt); }
+    HRESULT SetMediaType(const CMediaType* pmt);
 private:
     CVCam*  m_pParent;
 };
