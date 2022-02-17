@@ -48,12 +48,13 @@ bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change 
         &width,
         &height,
         &actual_comps,
-        NUMBYTES
+        3
     ); // 13.3752 ms (x86)
 
-    if (actual_comps != NUMBYTES) {
+    if (actual_comps != 3) {
         cda::logln("The requested number of bytes wasn't able to be unpacked to by the decompressor.");
         free(dec);
+        abort();
         return false;
     }
     const size_t dec_len = ((size_t) width) * height * NUMBYTES;
@@ -80,12 +81,11 @@ bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change 
                 dst[r * w * NUMBYTES + c * NUMBYTES + 2] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 1];
             }
             else { // 4
-                dst[r * w * NUMBYTES + c * NUMBYTES + 0] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 4];
-                dst[r * w * NUMBYTES + c * NUMBYTES + 1] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 3];
-                dst[r * w * NUMBYTES + c * NUMBYTES + 2] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 2];
-                dst[r * w * NUMBYTES + c * NUMBYTES + 3] = dec[(r + 1) * w * NUMBYTES - c * NUMBYTES - 1];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 0] = dec[(r + 1) * w * 3 - c * 3 - 3];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 1] = dec[(r + 1) * w * 3 - c * 3 - 2];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 2] = dec[(r + 1) * w * 3 - c * 3 - 1];
+                dst[r * w * NUMBYTES + c * NUMBYTES + 3] = 0;
             }
-            
         }
     }
     free(dec);

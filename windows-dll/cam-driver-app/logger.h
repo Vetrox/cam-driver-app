@@ -3,7 +3,7 @@
 #include <string>
 
 namespace cda {
-	constexpr auto ENABLE_LOGGING = true;
+	constexpr auto ENABLE_LOGGING = false;
 	void log(const char* msg);
 	void log(std::string msg);
 	void log(long long msg);

@@ -51,6 +51,9 @@ HRESULT CVCamStream::FillBuffer(IMediaSample* pms) {
     BYTE* pData;
     const long lDataLen = pms->GetSize();
     pms->GetPointer(&pData);
+    //for (size_t i = 0; i < lDataLen; i++) {
+    //    pData[i] = rand();
+    //}
     cda::send_beacon();
     cda::recv_img(pData, lDataLen);
     return S_OK;
@@ -79,8 +82,9 @@ HRESULT CVCamStream::GetMediaType(CMediaType* pmt) {
     SetRectEmpty(&(pvi->rcTarget));
 
     pmt->SetType(&MEDIATYPE_Video);
-    const auto SubTypeGUID = GetBitmapSubtype(&pvi->bmiHeader);
-    pmt->SetSubtype(&SubTypeGUID);
+    //const auto SubTypeGUID = GetBitmapSubtype(&pvi->bmiHeader);
+    //pmt->SetSubtype(&SubTypeGUID);
+    pmt->SetSubtype(&MSUBTYPE);
     pmt->SetSampleSize(pvi->bmiHeader.biSizeImage);
     pmt->SetFormatType(&FORMAT_VideoInfo);
     pmt->SetTemporalCompression(FALSE);
