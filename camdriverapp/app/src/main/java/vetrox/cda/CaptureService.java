@@ -1,7 +1,10 @@
 package vetrox.cda;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
@@ -30,8 +33,9 @@ public class CaptureService extends LifecycleService {
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
 
-        final String NOTIFICATION_CHANNEL_ID = "com.example.cameravideocapture";
-        final int ONGOING_NOTIFICATION_ID = 1234;
+        final String NOTIFICATION_CHANNEL_ID = "abc.def.ghi.jkl";
+        final String NOT_CHANNEL_NAME = "aaaaaaaaaaa";
+        final int ONGOING_NOTIFICATION_ID = 123114;
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this,
@@ -39,6 +43,10 @@ public class CaptureService extends LifecycleService {
                 new Intent(this, CaptureService.class),
                 0
         );
+
+        NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOT_CHANNEL_NAME, NotificationManager.IMPORTANCE_NONE);
+        NotificationManager service = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        service.createNotificationChannel(channel);
 
         Notification notification =
                 new Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
