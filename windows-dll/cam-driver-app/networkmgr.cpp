@@ -51,6 +51,10 @@ bool decompress(size_t src_len, uint8_t* dst, size_t dst_len) { // TODO: change 
         3
     ); // 13.3752 ms (x86)
 
+    if (dec == nullptr) {
+        return false;
+    }
+
     if (actual_comps != 3) {
         cda::logln("The requested number of bytes wasn't able to be unpacked to by the decompressor.");
         free(dec);
